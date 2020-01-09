@@ -17,6 +17,9 @@ public class MainMenuManager : MonoBehaviour
         instance = this;
         ShowPanelCarSelection();
 
+        if (!PlayerPrefs.HasKey("Player"))
+            PlayerPrefs.SetString("Player", CarsSelection.instance.dataCarSelections[0].id);
+
         CarsSelection.instance.FirstSpawnModelById(PlayerPrefs.GetString("Player"));
         MusicManager.instance.PlayAudio("MusicMenu");
     }

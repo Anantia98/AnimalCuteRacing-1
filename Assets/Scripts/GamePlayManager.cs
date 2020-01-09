@@ -24,20 +24,23 @@ public class GamePlayManager : MonoBehaviour
     GameObject player;
     string nameWorld;
     int indexLevel;
-
+    Transform lineFinish;
+    public Transform lineStart;
+    float currentMeter;
+    float distance;
 
     private void Awake()
     {
         if (CarsSelection.instance != null)
-            CarsSelection.instance.BaseSpawnModelById(PlayerPrefs.GetString("Player"), true, parentPlayer, -11.8f);
+            CarsSelection.instance.BaseSpawnModelById(PlayerPrefs.GetString("Player"), true, parentPlayer, parentPlayer.transform.position.z);
 
-        nameWorld = PlayerPrefs.GetString("nameWorld");
-        indexLevel = PlayerPrefs.GetInt("indexLevel");
-
-        Debug.Log("nameWOrld : " + nameWorld);
-        Debug.Log("indexLevel : " + indexLevel);
-
-        WorldsSelection.instance.SpawnLevelByIndex(nameWorld, indexLevel, parentLevel);
+        if (WorldsSelection.instance != null)
+        {
+            nameWorld = PlayerPrefs.GetString("nameWorld");
+            indexLevel = PlayerPrefs.GetInt("indexLevel");
+            Debug.Log(nameWorld);
+            WorldsSelection.instance.SpawnLevelByIndex(nameWorld, indexLevel, parentLevel);
+        }
     }
 
     // Start is called before the first frame update
@@ -46,13 +49,45 @@ public class GamePlayManager : MonoBehaviour
         instance = this;
         player = GameObject.FindGameObjectWithTag("Player");
         player.AddComponent<TriggersGamePlay>();
-        PlayGame();
+        lineFinish = null;
+        lineStart = GameObject.FindGameObjectWithTag("LineStart").transform;
+        StartCoroutine(GetLineFinish());
+        StartCoroutine(GetDistance());
+        StartCoroutine(StartGame());
+
     }
 
     // Update is called once per frame
     void Update()
     {
 
+    }
+
+    IEnumerator GetLineFinish()
+    {
+        while (lineFinish == null)
+        {
+            lineFinish = GameObject.FindGameObjectWithTag("LineFinish").transform;
+            yield return null;
+        }
+    }
+
+    IEnumerator GetDistance()
+    {
+        while (state == State.play && lineFinish != null)
+        {
+            distance = (lineFinish.transform.position - lineStart.transform.position).magnitude;
+            currentMeter = distance - (lineFinish.transform.position - player.transform.position).magnitude;
+            // Debug.Log("distance : "+currentMeter.ToString("F1"));
+            PanelGamePlayManager.instance.SetTextDistance(Mathf.Round(currentMeter) + " m / " + Mathf.Round(distance) + " m");
+            yield return null;
+        }
+        if (state == State.finish)
+        {
+            PanelGamePlayManager.instance.SetTextDistance(Mathf.Round(distance) + " m / " + Mathf.Round(distance) + " m");
+            Debug.Log("finish coy");
+            yield break;
+        }
     }
 
     void SetUpBasePanel(bool panelResume, bool panelGameOver, bool panelGameFinish)
@@ -62,11 +97,25 @@ public class GamePlayManager : MonoBehaviour
         this.panelGameFinish.SetActive(panelGameFinish);
     }
 
+    IEnumerator StartGame()
+    {
+        MusicManager.instance.StopAudio();
+        var carController = FindObjectOfType<CarController>();
+        yield return new WaitUntil(() => carController != null && carController.isGrounded);
+         StartCoroutine(PanelTextInfoGamePlay.instance.ShowPanelTextInfo("GO ... !!!!"));
+        yield return new WaitForSeconds(0.8f);
+        yield return StartCoroutine(AudioSourceEffek.instance.AudioStartGame());
+        Debug.Log(carController);
+        PlayGame();
+    }
+
     public void PlayGame()
     {
         state = State.play;
         SetUpBasePanel(false, false, false);
-        MusicManager.instance.PlayAudio("MusicWorld_1");
+        if (MusicManager.instance != null)
+            MusicManager.instance.PlayAudio("MusicWorld_1");
+        PanelGamePlayManager.instance.SetTxtLevel(indexLevel + 1);
     }
 
     public void ShowPanelResume()
@@ -80,8 +129,24 @@ public class GamePlayManager : MonoBehaviour
         SceneManager.LoadScene("MainMenu");
     }
 
+    public void NextLevel()
+    {
+        PlayerPrefs.SetInt("indexLevel", PlayerPrefs.GetInt("indexLevel") + 1);
+        if (indexLevel > PanelLevelSelection.instance.GetListLockLevel(nameWorld).Count - 1)
+        {
+
+        }
+        else
+        {
+
+        }
+        PanelLevelSelection.instance.UnlockLevel(nameWorld, indexLevel + 1);
+        RestartGamePlay();
+    }
+
     public void RestartGamePlay()
     {
+        MusicManager.instance.StopAudio();
         SceneManager.LoadScene("GamePlay");
     }
 
@@ -103,6 +168,7 @@ public class GamePlayManager : MonoBehaviour
     {
         state = State.finish;
         DriverController.instance.SetAnimWin();
+        SetUpBasePanel(false, false, true);
         Debug.Log("Finish");
     }
 }

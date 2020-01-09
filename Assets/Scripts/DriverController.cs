@@ -5,24 +5,38 @@ using UnityEngine;
 public class DriverController : MonoBehaviour
 {
     public static DriverController instance;
-    string IS_IDLE_KEY = "isIdle";
+
     string IS_NGE_DRIVE_KEY = "isNgeDrive";
     string BENSIN_HABIS_KEY = "bensinHabis";
     string MENANG_KEY = "menang";
     string NGE_DRIVE_KEY = "ngeDrive";
+    bool isDead;
     Animator animator;
-    Rigidbody rb;
+
 
     public Collider mainCollider;
     Collider[] allCollider;
     // Start is called before the first frame update
     void Start()
     {
+
         instance = this;
+        isDead = false;
         allCollider = GetComponentsInChildren<Collider>(true);
         animator = GetComponent<Animator>();
-        // rb = GetComponent<Rigidbody>();
+        
         DoRagdoll(false);
+
+    }
+
+    void Update()
+    {
+        if (!isDead)
+        {
+            transform.position = transform.parent.position;
+            transform.rotation = transform.parent.rotation;
+        }
+
     }
 
     public void SetOnGamePlay(float ngeDrive)
@@ -47,10 +61,6 @@ public class DriverController : MonoBehaviour
             item.enabled = isRagdoll;
         mainCollider.enabled = !isRagdoll;
         animator.enabled = !isRagdoll;
-        // if (!isRagdoll)
-        //     rb.constraints = RigidbodyConstraints.FreezeAll;
-        // else
-        //     rb.constraints = RigidbodyConstraints.None;
 
     }
 
@@ -58,12 +68,20 @@ public class DriverController : MonoBehaviour
     {
         if (collision.gameObject.tag.Equals("DeadTrigger"))
         {
+            // Time.timeScale = 0.1f;
             Debug.Log("mati");
-            transform.parent.DetachChildren();
-            DoRagdoll(true);
+            isDead= true;
+            GamePlayManager.instance.DeadByTrigger();
+            // transform.parent.DetachChildren();
+            // CameraGamePlayManager.instance.cameraGameOver.gameObject.SetActive(true);
+            // CameraGamePlayManager.instance.cameraGameOver.transform.position = transform.position;
+            // DoRagdoll(true);
         }
-        Debug.Log("Layer mask : "+collision.gameObject.layer);
-        Debug.Log("kena : "+collision.gameObject.tag);
+        if(collision.gameObject.tag.Equals(""))
+        {
+
+        }
+        // Debug.Log("kena : "+collision.gameObject.tag);
     }
 
 
